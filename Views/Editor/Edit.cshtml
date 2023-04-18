@@ -3,10 +3,11 @@
 <h2>Edit Document</h2>
 
 @using (Html.BeginForm())
-    {
+{
     @Html.AntiForgeryToken()
 
     @Html.HiddenFor(model => model.Id)
+    @Html.HiddenFor(model => model.UserId) <!-- Add a hidden field for UserId -->
 
     <div class="form-group">
         @Html.LabelFor(model => model.Title)
@@ -21,6 +22,6 @@
     </div>
 
     <input type="submit" value="Save" class="btn btn-primary" />
-    }
+}
 
-<a href="@Url.Action("Index")" class="btn btn-default">Back to List</a>
+<a href="@Url.Action("Index", new { id = Model.UserId })" class="btn btn-default">Back to List</a> <!-- Add UserId as parameter in URL action -->

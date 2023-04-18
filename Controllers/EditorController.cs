@@ -11,27 +11,40 @@ namespace TextEditor.Controllers
 {
     public class EditorController : Controller
     {
+        private IConfiguration _configuration;
+        private SqlConnection con;
+
+        public EditorController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+            con = new SqlConnection(_configuration.GetConnectionString("Practice"));
+        }
+
         // GET: Document
-        public ActionResult Index()
+        [Route("Editor/Index/{userId}")]
+        public ActionResult Index(string userId)
         {
             List<DocumentModel> documents = new List<DocumentModel>();
-            using (SqlConnection con = new SqlConnection("Data Source=5CG9445SKD;Initial Catalog=Document;Integrated Security=True;Encrypt=False"))
+
+            con.Open();
+            string query = "SELECT * FROM Documents where UserId = @UserId";
+
+            SqlCommand cmd = new SqlCommand(query, con);
+
+            cmd.Parameters.AddWithValue("@UserId", userId);
+            SqlDataReader reader = cmd.ExecuteReader();
+            while (reader.Read())
             {
-                con.Open();
-                string query = "SELECT * FROM Documents";
-                SqlCommand cmd = new SqlCommand(query, con);
-                SqlDataReader reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    DocumentModel document = new DocumentModel();
-                    document.Id = Convert.ToInt32(reader["Id"]);
-                    document.Title = reader["Title"].ToString();
-                    document.Content = reader["Content"].ToString();
-                    documents.Add(document);
-                }
-                con.Close();
+                DocumentModel document = new DocumentModel();
+                document.Id = Convert.ToInt32(reader["Id"]);
+                document.Title = reader["Title"].ToString();
+                document.Content = reader["Content"].ToString();
+                documents.Add(document);
             }
-            return View(documents);
+            con.Close();
+            ViewBag.documents = documents;
+            ViewBag.userId = userId;
+            return View();
         }
 
         // GET: Document/Create
@@ -45,21 +58,18 @@ namespace TextEditor.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Create(DocumentModel document)
         {
-            if (ModelState.IsValid)
-            {
-                using (SqlConnection con = new SqlConnection("Data Source=5CG9445SKD;Initial Catalog=Document;Integrated Security=True;Encrypt=False"))
-                {
-                    con.Open();
-                    string query = "INSERT INTO Documents (Title, Content) VALUES (@Title, @Content)";
-                    SqlCommand cmd = new SqlCommand(query, con);
-                    cmd.Parameters.AddWithValue("@Title", document.Title);
-                    cmd.Parameters.AddWithValue("@Content", document.Content);
-                    cmd.ExecuteNonQuery();
-                    con.Close();
-                }
-                return RedirectToAction("Index");
-            }
-            return View(document);
+            con.Open();
+            string query = "INSERT INTO Documents (Title, Content,UserId) VALUES (@Title, @Content,@UserId)";
+            SqlCommand cmd = new SqlCommand(query, con);
+            cmd.Parameters.AddWithValue("@Title", document.Title);
+            cmd.Parameters.AddWithValue("@Content", document.Content);
+            cmd.Parameters.AddWithValue("@UserId", 1);
+            cmd.ExecuteNonQuery();
+            con.Close();
+
+            return RedirectToAction("Index", new { userId = 1 });
+
+
         }
 
         // GET: Document/Edit/5
@@ -71,48 +81,65 @@ namespace TextEditor.Controllers
             }
 
             DocumentModel document = new DocumentModel();
-            using (SqlConnection con = new SqlConnection("Data Source=5CG9445SKD;Initial Catalog=Document;Integrated Security=True;Encrypt=False"))
+
+            con.Open();
+            string query = "SELECT * FROM Documents WHERE Id = @Id";
+            SqlCommand cmd = new SqlCommand(query, con);
+            cmd.Parameters.AddWithValue("@Id", id);
+            SqlDataReader reader = cmd.ExecuteReader();
+            if (reader.Read())
             {
-                con.Open();
-                string query = "SELECT * FROM Documents WHERE Id = @Id";
-                SqlCommand cmd = new SqlCommand(query, con);
-                cmd.Parameters.AddWithValue("@Id", id);
-                SqlDataReader reader = cmd.ExecuteReader();
-                if (reader.Read())
-                {
-                    document.Id = Convert.ToInt32(reader["Id"]);
-                    document.Title = reader["Title"].ToString();
-                    document.Content = reader["Content"].ToString();
-                }
-                else
-                {
-                    return NotFound();
-                }
-                con.Close();
+                document.Id = Convert.ToInt32(reader["Id"]);
+                document.Title = reader["Title"].ToString();
+                document.Content = reader["Content"].ToString();
+                document.UserId = reader["UserId"].ToString();
             }
+            else
+            {
+                return NotFound();
+            }
+            con.Close();
+
             return View(document);
         }
 
         // POST: Document/Edit/5
         [HttpPost]
-        [ValidateAntiForgeryToken]
         public ActionResult Edit(DocumentModel document)
         {
-            if (ModelState.IsValid)
+            // Console.WriteLine($"Id: {document.Id}, Title: {document.Title}, Content: {document.Content}, UserId: {document.UserId}");
+            try
             {
-                using (SqlConnection con = new SqlConnection("Data Source=5CG9445SKD;Initial Catalog=Document;Integrated Security=True;Encrypt=False"))
+                con.Open();
+                string query = "UPDATE Documents SET Title = @Title, Content = @Content WHERE Id = @Id";
+                SqlCommand cmd = new SqlCommand(query, con);
+                cmd.Parameters.AddWithValue("@Id", document.Id);
+                cmd.Parameters.AddWithValue("@Title", document.Title);
+                cmd.Parameters.AddWithValue("@Content", document.Content);
+                int res = cmd.ExecuteNonQuery();
+                Console.WriteLine(res);
+                if (res > 0)
                 {
-                    con.Open();
-                    string query = "UPDATE Documents SET Title = @Title, Content = @Content WHERE Id = @Id";
-                    SqlCommand cmd = new SqlCommand(query, con);
-                    cmd.Parameters.AddWithValue("@Id", document.Id);
-                    cmd.Parameters.AddWithValue("@Title", document.Title);
-                    cmd.Parameters.AddWithValue("@Content", document.Content);
-                    cmd.ExecuteNonQuery();
-                    con.Close();
+                    Console.WriteLine("Updated");
+                    return RedirectToAction("Index", new { userId = document.UserId });
                 }
-                return RedirectToAction("Index");
+                else
+                {
+                    Console.WriteLine("Not Updated");
+                }
             }
+            catch (SqlException ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            finally
+            {
+                con.Close();
+            }
+
+
+
+
             return View(document);
         }
 
@@ -121,48 +148,52 @@ namespace TextEditor.Controllers
         {
 
             DocumentModel document = new DocumentModel();
-            using (SqlConnection con = new SqlConnection("Data Source=5CG9445SKD;Initial Catalog=Document;Integrated Security=True;Encrypt=False"))
-            {
-                con.Open();
-                string query = "SELECT * FROM Documents WHERE Id = @Id";
-                SqlCommand cmd = new SqlCommand(query, con);
-                cmd.Parameters.AddWithValue("@Id", id);
-                SqlDataReader reader = cmd.ExecuteReader();
-                if (reader.Read())
-                {
-                    document.Id = Convert.ToInt32(reader["Id"]);
-                    document.Title = reader["Title"].ToString();
-                    document.Content = reader["Content"].ToString();
-                }
 
-                con.Close();
+            con.Open();
+            string query = "SELECT * FROM Documents WHERE Id = @Id";
+            SqlCommand cmd = new SqlCommand(query, con);
+            cmd.Parameters.AddWithValue("@Id", id);
+            SqlDataReader reader = cmd.ExecuteReader();
+            if (reader.Read())
+            {
+                document.Id = Convert.ToInt32(reader["Id"]);
+                document.Title = reader["Title"].ToString();
+                document.Content = reader["Content"].ToString();
+                document.UserId = reader["UserId"].ToString();
             }
+
+            con.Close();
+
             return View(document);
         }
+
 
         // POST: Editor/Delete/5
         [HttpPost, ActionName("Delete")]
         public ActionResult DeleteConfirmed(int id)
         {
-            using (SqlConnection con = new SqlConnection("Data Source=5CG9445SKD;Initial Catalog=Document;Integrated Security=True;Encrypt=False"))
-            {
-                con.Open();
-                string query = "DELETE FROM Documents WHERE Id = @Id";
-                SqlCommand cmd = new SqlCommand(query, con);
-                cmd.Parameters.AddWithValue("@Id", id);
-                int rowsAffected = cmd.ExecuteNonQuery();
-                con.Close();
 
-                if (rowsAffected > 0)
-                {
-                    return RedirectToAction("Index");
-                }
-                else
-                {
-                    return RedirectToAction("Error");
-                }
+
+            con.Open();
+            string query = "DELETE FROM Documents WHERE Id = @Id";
+            SqlCommand cmd = new SqlCommand(query, con);
+            cmd.Parameters.AddWithValue("@Id", id);
+            int rowsAffected = cmd.ExecuteNonQuery();
+
+            con.Close();
+
+            if (rowsAffected > 0)
+            {
+                return RedirectToAction("Index", new { userId = 1 });
             }
+            else
+            {
+                return RedirectToAction("Error");
+            }
+
         }
+
+
 
     }
 }

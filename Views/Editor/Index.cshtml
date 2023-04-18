@@ -1,9 +1,9 @@
-﻿@model IEnumerable<DocumentModel>
+@model IEnumerable<DocumentModel>
 
 <h2>Document List</h2>
 
 <p>
-    @Html.ActionLink("Create New", "Create", null, new { @class = "btn btn-primary" })
+   @Html.ActionLink("Create New", "Create",  new { id = ViewBag.userId },new { @class = "btn btn-danger btn-sm" })
 </p>
 
 <table class="table">
@@ -17,7 +17,7 @@
         <th></th>
     </tr>
 
-    @foreach (var item in Model)
+    @foreach (DocumentModel item in ViewBag.documents)
         {
         <tr>
             <td>
@@ -28,7 +28,8 @@
             </td>
             <td>
                 @Html.ActionLink("Edit", "Edit", new { id = item.Id }, new { @class = "btn btn-primary btn-sm" }) |
-                @Html.ActionLink("Delete", "Delete", new { id = item.Id }, new { @class = "btn btn-danger btn-sm" })
+                @Html.ActionLink("Delete", "Delete", new { id = item.Id }, new { @class = "btn btn-danger btn-sm" }) |
+                
             </td>
         </tr>
         }

@@ -24,7 +24,7 @@ namespace TextEditor
 
             app.MapControllerRoute(
                 name: "default",
-                pattern: "{controller=Editor}/{action=Index}/{id?}");
+                pattern: "{controller=Auth}/{action=Login}/{id?}");
 
             app.Run();
             }
