@@ -20,12 +20,7 @@
         <input type="submit" value="Delete" class="btn btn-danger" /> |
                 <a asp-action="Index" asp-route-id=@Model.UserId>Back to List</a>
     </form>
-            @* @using (Html.BeginForm())
-                {
-                @Html.AntiForgeryToken()
-                @Html.ActionLink("Cancel", "Index", null, new { @class = "btn btn-default" })
-                <input type="submit" value="Delete" class="btn btn-danger" />
-                } *@
+           
         </td>
     </tr>
 </table>
